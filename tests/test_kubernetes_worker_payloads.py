@@ -133,12 +133,19 @@ async def test_sdk_result_is_persisted_before_transport_cleanup(monkeypatch, sta
 
     monkeypatch.setattr(module, "run_job", run_job)
     target = SimpleNamespace(enabled=True, cluster_id=uuid4(), placement=KubernetesPlacement(namespace="ep"))
-    cluster = SimpleNamespace(enabled=True, endpoint="https://cluster.test", api_key="token", ca_certificate=None)
+    cluster = SimpleNamespace(
+        enabled=True,
+        endpoint="https://cluster.test",
+        credential_ref=uuid4(),
+        source_client_id="ao",
+        ca_certificate=None,
+    )
     manager = module.VanillaK8sWorkerManager(
         SimpleNamespace(get_with_credentials=AsyncMock(return_value=target)),
         SimpleNamespace(get_with_credentials=AsyncMock(return_value=cluster)),
         SimpleNamespace(set_result=persist),
         EPSettings(),
+        credential_resolver=SimpleNamespace(resolve=AsyncMock(return_value="token")),
     )
     item = WorkItem(
         client_id="ao",
