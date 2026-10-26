@@ -266,14 +266,55 @@ _node_exec() {
   return 1
 }
 
+_container_runtime() {
+  if command -v podman >/dev/null 2>&1; then
+    printf '%s' podman
+    return 0
+  fi
+  if command -v docker >/dev/null 2>&1; then
+    printf '%s' docker
+    return 0
+  fi
+  echo "ERROR: podman or docker is required to load node images" >&2
+  return 1
+}
+
+_node_has_image() {
+  local image=$1
+  _node_exec crictl inspecti -q "${image}" >/dev/null
+}
+
+_build_and_load_node_image() {
+  local image=$1
+  local runtime node
+  runtime=$(_container_runtime)
+  node=$(_kind_node_container)
+
+  echo "=== Building local script image ${image} ==="
+  "${runtime}" build -f "${REPO_ROOT}/tests/fixtures/sdk_script/Containerfile" \
+    -t "${image}" "${REPO_ROOT}/tests/fixtures/sdk_script"
+  echo "=== Loading ${image} into Kind node ${node} ==="
+  "${runtime}" save "${image}" | _node_exec -i ctr -n k8s.io images import -
+}
+
 _prepull_node_image() {
   local image=$1
   local node
   node=$(_kind_node_container)
   echo "=== Pre-pull ${image} on Kind node ${node} ==="
-  _node_exec crictl pull "${image}"
+  if ! _node_has_image "${image}"; then
+    if [[ "${image}" == "localhost/syntara-sdk-script:dev" ]]; then
+      _build_and_load_node_image "${image}"
+    else
+      _node_exec crictl pull "${image}"
+    fi
+  fi
+  if ! _node_has_image "${image}"; then
+    echo "ERROR: ${image} is not present on Kind node ${node}" >&2
+    exit 1
+  fi
   _node_exec crictl images
-  echo "pre-pulled ${image} on ${node}"
+  echo "prepared ${image} on ${node}"
 }
 
 _allow_ep_callback_identity() {
