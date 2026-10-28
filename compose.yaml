@@ -138,6 +138,8 @@ services:
       EP_DATABASE_URL: postgresql+asyncpg://execution_plane_runtime:${EP_DB_RUNTIME_PASSWORD:-ep-runtime}@database:5432/execution_plane
       EP_CREDENTIAL_ENCRYPTION_KEY_PATH: /run/secrets/ep/credential-encryption-key
       EP_COMPLETION_CALLBACK_URL: ${EP_COMPLETION_CALLBACK_URL:-}
+      EP_CREDENTIAL_RESOLUTION_CALLBACK_URL: ${EP_CREDENTIAL_RESOLUTION_CALLBACK_URL:-}
+      EP_CREDENTIAL_RESOLUTION_CALLBACK_CA_CERT_PATH: /run/secrets/ep/credential-resolution-ca.pem
       EP_NODE_STARTUP_SECONDS: ${EP_NODE_STARTUP_SECONDS:-120}
       EP_NODE_GRACE_SECONDS: ${EP_NODE_GRACE_SECONDS:-30}
       EP_WORKLOAD_ALLOWED_EGRESS_CIDRS: ${EP_WORKLOAD_ALLOWED_EGRESS_CIDRS:-[]}
@@ -146,6 +148,7 @@ services:
     volumes:
       - ./tools/wait_for_ep_database.py:/scripts/wait_for_ep_database.py:ro,z
       - ${EP_CREDENTIAL_ENCRYPTION_KEY_FILE:-.secrets/encryption-key}:/run/secrets/ep/credential-encryption-key:ro,z
+      - ./.secrets/certs/ca.pem:/run/secrets/ep/credential-resolution-ca.pem:ro,z
     depends_on:
       migrate:
         condition: service_healthy
